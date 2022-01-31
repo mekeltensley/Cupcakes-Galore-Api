@@ -1,5 +1,5 @@
 {
-  "name": "cupcakes-galore-backend",
+  "name": "cupcakes-galore-api",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -18,6 +18,8 @@
   },
   "homepage": "https://github.com/mekeltensley/Cupcakes-Galore-Backend#readme",
   "dependencies": {
+    "bcrypt": "^5.0.1",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^14.3.2",
     "express": "^4.17.2",
     "mongoose": "^6.1.8",
