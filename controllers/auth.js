@@ -1,22 +1,33 @@
-const router = require("express").Router();
-const Customer = require("../models/Customer");
+require('dotenv').config();
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = process.env;
 
+
+const User = require("../models/User");
+
+router.get('/test', ( req, res ) => {
+    res.json({
+        message: 'Testing users controller'
+    });
+});
 
 router.post('/register', async (req, res) => {
     // POST - adding the new user to the database
-    console.log('===> Inside of /register');
+    console.log('===> Inside of /signup');
     console.log(req.body);
 
-    Customer.findOne({ email: req.body.email })
-    .then(customer => {
+    User.findOne({ email: req.body.email })
+    .then(user => {
         // if email already exists, a user will come back
-        if (customer) {
+        if (user) {
             // send a 400 response
             return res.status(400).json({ message: 'Email already exists' });
         } else {
             // Create a new user
-            const newCustomer = new Customer({
+            const newUser = new User({
                 username: req.body.username,
                 email: req.body.email,
                 password: req.body.password
@@ -26,12 +37,12 @@ router.post('/register', async (req, res) => {
             bcrypt.genSalt(10, (err, salt) => {
                 if (err) throw Error;
 
-                bcrypt.hash(newCustomer.password, salt, (err, hash) => {
+                bcrypt.hash(newUser.password, salt, (err, hash) => {
                     if (err) console.log('==> Error inside of hash', err);
                     // Change the password in newUser to the hash
-                    newCustomer.password = hash;
-                    newCustomer.save()
-                    .then(createdCustomer => res.json(createdCustomer))
+                    newUser.password = hash;
+                    newUser.save()
+                    .then(createdUser => res.json(createdUser))
                     .catch(err => console.log(err));
                 });
             });
@@ -43,35 +54,48 @@ router.post('/register', async (req, res) => {
     })
 });
 
+router.post('/login', async (req, res) => {
+    // POST - finding a user and returning the user
+    console.log('===> Inside of /login');
+    console.log(req.body);
 
-// router.post("/register", async (req, res) => {
-//     const newCustomer = new Customer({
-//         username: req.body.username,
-//         email: req.body.email,
-//         password: req.body.password,
-//     });
+    const foundUser = await User.findOne({ username: req.body.username });
 
-//     bcrypt.genSalt(10, (err, salt) => {
-//         if (err) throw Error;
+    if (foundUser) {
+        // user is in the DB
+        let isMatch = await bcrypt.compare(req.body.password, foundUser.password);
+        console.log('Match User', isMatch);
+        if (isMatch) {
+            // Updated timesLoggedin
+            foundUser.timesLoggedIn += 1;
+            foundUser.save();
+            // if user match, then we want to send a JSON Web Token
+            // Create a token payload
+            // add an expiredToken = Date.now()
+            // save the user
+            const payload = {
+                id: foundUser._id,
+                username: foundUser.username,
+                password: foundUser.password,
+                isAdmin: foundUser.isAdmin
+            }
 
-//         bcrypt.hash(newCustomer.password, salt, (err, hash) => {
-//             if (err) console.log('==> Error inside of hash', err);
-//             // Change the password in newUser to the hash
-//             newCustomer.password = hash;
-//             newCustomer.save()
-//             .then(createdCustomer => res.json(createdCustomer))
-//             .catch(err => console.log(err));
-//         });
-//     });
+            jwt.sign(payload, JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+                if (err) {
+                    res.status(400).json({ message: 'Session has endedd, please log in again'});
+                }
+                const legit = jwt.verify(token, JWT_SECRET, { expiresIn: 60 });
+                console.log('===> legit');
+                console.log(legit);
+                res.json({ success: true, token: `Bearer ${token}`, userData: legit });
+            });
 
-    // try {
-    //     const saveCustomer = await newCustomer.save();
-    //     res.status(201).json(saveCustomer);
-    // } catch (err) {
-    //     res.status(500).json(err);
-    // }
-
-// });
-
+        } else {
+            return res.status(400).json({ message: 'Username or Password is incorrect' });
+        }
+    } else {
+        return res.status(400).json({ message: 'User not found' });
+    }
+});
 
 module.exports = router;

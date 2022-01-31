@@ -5,18 +5,20 @@ const mongoose = require('mongoose');
 
 const PORT = process.env.PORT || 8000;
 
+// Mongoose Connection
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("Connection Successful"))
+  .catch((err) => {
+    console.log(err);
+  })
+
 // Authentication Controllers
 
 const authRoute = require("./controllers/auth");
 
-//Mongoose Connection
-
-mongoose.connect(process.env.MONGO_URL)
-  .then (() => console.log("Connection Successful"))
-  .catch((err) => {
-    console.log(err);
-  });
-
+// Middleware
 
 app.use(express.json());
 
